@@ -21,31 +21,6 @@ def create_project(db: Session,p:Project,user: User):
     db.commit()
     db.refresh(proj)
     return proj
-# def create_project(p:Project,user: User):
-    
-#     # owner = db.query(User).filter(User.id == user.id).first()
-#     # if not owner:
-#     #     raise HTTPException(status_code=404, detail="Owner not found")
-#     if user.role_name == "org_admin":
-#           proj = Project(
-#         name=p.name,
-#         des=p.des,
-#         owner_id=user.id,
-#         org_id=user.org_id
-#         )
-#     else:
-        
-#         proj = Project(
-#         name=p.name,
-#         des=p.des,
-#         owner_id=user.id,
-#         org_id=p.org_id
-#         )
-   
-#     db.add(proj)
-#     db.commit()
-#     db.refresh(proj)
-#     return proj
 
 def get_user_projects(db: Session, user: User, page: int, no_records: int,search:str):
   
@@ -136,15 +111,8 @@ def get_single_project(db: Session, project_id: int, user: User):
 
 def delete_project(db: Session, project_id: int, user: User):
    
-    # if user.role_name == "org_admin":
-    #     proj = db.query(Project).filter(Project.id == project_id, Project.owner_id == user.id).first()
-    # else:
-    #     proj = get_single_project(db, project_id, user)
-
-    # db.delete(proj)
-    # db.commit()
-    # return {"msg": f"project {project_id} is deleted"}
-    project = db.query(Project).filter(Project.id == id).first()
+   
+    project = db.query(Project).filter(Project.id == project_id).first()
     
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
