@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - Real-Time Chat</title>
+    <link rel="stylesheet" href="/static/css/chat.css">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Left Sidebar: User List -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Users</h2>
+                <div class="status" id="connection-status">Connected</div>
+            </div>
+            
+            <!-- Search Box -->
+            <div class="search-box">
+                <input type="text" id="user-search" placeholder="Search users...">
+                <button onclick="searchUsers()">Search</button>
+            </div>
+            
+            <!-- User List -->
+            <div class="user-list" id="user-list">
+                <p class="loading">Loading users...</p>
+            </div>
+        </div>
+        
+        <!-- Right: Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <h3 id="chat-with">Select a user to chat</h3>
+                <span id="user-status"></span>
+            </div>
+            
+            <!-- Messages -->
+            <div class="chat-messages" id="chat-messages">
+                <p class="placeholder">Select a user to start chatting</p>
+            </div>
+            
+            <!-- Input -->
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Type message..." disabled>
+                <button onclick="sendMessage()" id="send-btn" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/chat.js"></script>
+</body>
+</html>
