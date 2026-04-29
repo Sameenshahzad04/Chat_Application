@@ -1,620 +1,107 @@
-﻿# backend_phase_2
+# 💬 Real-Time Chat Application with WebRTC Audio/Video Calling
 
-
-# 🏢 Multi-Tenant Project Management System (PMS)
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  FastAPI + PostgreSQL + Stripe + Multi-Tenant Architecture   │
-└──────────────────────────────────────────────────────────────┘
-```
+A production-ready, full-featured real-time chat application built with **FastAPI** and **WebRTC**, featuring instant messaging, audio calls, and video calls - all in a single-page interface similar to WhatsApp Web.
 
 ---
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Database Schema](#database-schema)
-- [Multi-Tenancy](#multi-tenancy)
-- [User Roles](#user-roles)
-- [Payment Integration](#payment-integration)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Setup Instructions](#setup-instructions)
-- [API Endpoints](#api-endpoints)
-- [Authentication Flow](#authentication-flow)
-- [Testing](#testing)
-- [Security](#security)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
-
----
-
-## 📖 Overview
-
-This is a **B2B SaaS Project Management System** built with **FastAPI** and **PostgreSQL** using a **schema-based multi-tenant architecture**.
-
-### Key Concepts
-
-| Concept | Description |
-|---------|-------------|
-| **Multi-Tenancy** | Each organization has its own PostgreSQL schema (`org_1`, `org_2`, ...) |
-| **Shared Tables** | `users`, `organizations`, `roles` stored in `public` schema |
-| **Tenant Tables** | `projects`, `tasks`, `subtasks` stored in organization-specific schemas |
-| **Payment** | Stripe subscription billing activated on first login |
-| **Security** | JWT authentication with role-based access control |
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+- [Database Setup](#-database-setup)
+- [Running the Application](#-running-the-application)
+- [API Endpoints](#-api-endpoints)
+- [WebSocket Communication](#-websocket-communication)
+- [WebRTC Call Flow](#-webrtc-call-flow)
+- [Features Documentation](#-features-documentation)
+- [Troubleshooting](#-troubleshooting)
+- [Security Considerations](#-security-considerations)
+- [Deployment](#-deployment)
+- [Future Enhancements](#-future-enhancements)
+- [License](#-license)
+- [Contact](#-contact)
 
 ---
 
 ## ✨ Features
 
-### 🔐 Security & Authentication
-- ✅ JWT-based authentication
-- ✅ Role-based access control (RBAC)
-- ✅ Password hashing with `pwdlib`
-- ✅ Secure API endpoints with dependency injection
+### Messaging Features
 
-### 🏢 Multi-Tenancy
-- ✅ Separate schema per organization
-- ✅ Automatic schema creation on org creation
-- ✅ Data isolation between organizations
-- ✅ Super admin can access all orgs
+- **Real-Time Messaging** - Instant message delivery via WebSocket connections
+- **Private Chat** - One-on-one conversations between users
+- **Message History** - Persistent storage of all chat conversations
+- **Delivery Confirmation** - Visual feedback when messages are sent and received
+- **User Search** - Find and connect with other users quickly
+- **Online Status** - See which users are currently active
+- **Join/Leave Notifications** - Get notified when users come online or go offline
 
-### 💳 Payment Integration
-- ✅ Stripe subscription billing
-- ✅ Payment activated on first login
-- ✅ Webhook handling for payment events
-- ✅ Account blocking on payment failure
+### Call Features
 
-### 📊 Project Management
-- ✅ Create, read, update, delete projects
-- ✅ Task management with status tracking
-- ✅ Subtask breakdown
-- ✅ User assignment to tasks
-- ✅ Pagination and search
+- **Audio Calling** - High-quality one-to-one voice calls
+- **Video Calling** - Face-to-face video conversations
+- **In-Page Call UI** - Calls appear as overlays without page redirects
+- **Incoming Call Modal** - Beautiful notification with accept/reject options
+- **Call Controls** - Mute/unmute, camera on/off, end call
+- **Call Timer** - Real-time call duration display
+- **Call History** - Log of all calls with status and duration
+- **Media Cleanup** - Automatic camera/microphone release after calls
 
----
+### Authentication & Security
 
-## 🏗️ Architecture
+- **JWT Authentication** - Secure token-based user sessions
+- **Password Hashing** - Bcrypt encryption for user passwords
+- **Token Expiration** - Automatic session timeout handling
+- **Protected Routes** - All endpoints require valid authentication
+- **WebSocket Security** - Token validation on WebSocket connections
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     PostgreSQL Database                      │
-├─────────────────────────────────────────────────────────────┤
-│  PUBLIC SCHEMA (Shared Across All Organizations)            │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  roles                                               │    │
-│  │  ├── role_name (PK)                                 │    │
-│  └─────────────────────────────────────────────────────┘    │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  organizations                                       │    │
-│  │  ├── id (PK)                                        │    │
-│  │  ├── name                                           │    │
-│  │  ├── des                                            │    │
-│  │  └── owner_id (FK → users.id)                       │    │
-│  └─────────────────────────────────────────────────────┘    │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  users                                               │    │
-│  │  ├── id (PK)                                        │    │
-│  │  ├── username                                       │    │
-│  │  ├── email                                          │    │
-│  │  ├── password (hashed)                              │    │
-│  │  ├── org_id (FK → organization.id)                  │    │
-│  │  ├── role_name (FK → roles.role_name)               │    │
-│  │  ├── stripe_customer_id                             │    │
-│  │  ├── stripe_subscription_id                         │    │
-│  │  ├── is_active                                      │    │
-│  │  └── first_login_done                               │    │
-│  └─────────────────────────────────────────────────────┘    │
-├─────────────────────────────────────────────────────────────┤
-│  ORG_1 SCHEMA (Organization 1 - Isolated Data)              │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  projects  │  tasks  │  subtasks                    │    │
-│  └─────────────────────────────────────────────────────┘    │
-├─────────────────────────────────────────────────────────────┤
-│  ORG_2 SCHEMA (Organization 2 - Isolated Data)              │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  projects  │  tasks  │  subtasks                    │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-```
+### User Interface
+
+- **WhatsApp-Inspired Design** - Familiar, intuitive interface
+- **Responsive Layout** - Works on desktop and tablet screens
+- **Smooth Animations** - Polished user experience with CSS transitions
+- **Connection Status** - Visual indicator for WebSocket connection state
+- **Ringing Animation** - Animated rings for incoming calls
+- **Picture-in-Picture Video** - Local video preview during video calls
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Category | Technology | Version |
-|----------|------------|---------|
-| **Language** | Python | 3.11+ |
-| **Framework** | FastAPI | 0.100+ |
-| **Database** | PostgreSQL | 14+ |
-| **ORM** | SQLAlchemy | 2.0+ |
-| **Migrations** | Alembic | 1.11+ |
-| **Authentication** | python-jose | 3.3+ |
-| **Password Hashing** | pwdlib | 0.2+ |
-| **Payments** | stripe | 5.0+ |
-| **Environment** | python-dotenv | 1.0+ |
-| **Server** | Uvicorn | 0.23+ |
+### Backend
+
+- **FastAPI** - Modern, high-performance Python web framework
+- **Python 3.14** - Latest Python version with improved performance
+- **SQLAlchemy** - SQL toolkit and ORM for database operations
+- **Alembic** - Database migration tool
+- **WebSockets** - Real-time bidirectional communication
+- **Pydantic** - Data validation and settings management
+- **Passlib** - Password hashing and verification
+- **Python-JOSE** - JWT token creation and verification
+
+### Frontend
+
+- **Vanilla JavaScript** - No framework dependencies, lightweight
+- **HTML5** - Semantic markup and WebRTC APIs
+- **CSS3** - Modern styling with animations and flexbox
+- **WebRTC API** - Browser-based real-time communication
+- **MediaDevices API** - Camera and microphone access
+
+### Database
+
+- **PostgreSQL** - Production-ready relational database (recommended)
+- **SQLite** - Lightweight database for development/testing
+- **Alembic Migrations** - Version-controlled schema changes
+
+### Real-Time Communication
+
+- **WebSocket** - Persistent connection for messaging and signaling
+- **WebRTC** - Peer-to-peer audio/video streaming
+- **STUN Servers** - Google's public STUN servers for NAT traversal
 
 ---
 
 ## 📁 Project Structure
-
-```
-Multi_tenant_api/
-├── project2/
-│   ├── main.py                 # FastAPI application entry point
-│   ├── database.py             # Database connection & schema management
-│   ├── base.py                 # SQLAlchemy Base class
-│   ├── jwt.py                  # JWT authentication & authorization
-│   ├── dependencies.py         # Custom dependencies (tenant DB)
-│   ├── super_admin.py          # Setup script (creates super admin)
-│   ├── alembic.ini             # Alembic configuration
-│   ├── .env                    # Environment variables (DO NOT COMMIT)
-│   │
-│   ├── migration/              # Database migrations
-│   │   ├── env.py
-│   │   ├── script.py.mako
-│   │   └── versions/           # Migration files
-│   │
-│   ├── models/                 # SQLAlchemy models
-│   │   ├── __init__.py
-│   │   ├── role.py
-│   │   ├── organization.py
-│   │   ├── user.py
-│   │   ├── project.py
-│   │   ├── task.py
-│   │   └── subtask.py
-│   │
-│   ├── schemas/                # Pydantic schemas
-│   │   ├── user_schema.py
-│   │   ├── organization_schema.py
-│   │   ├── project_schema.py
-│   │   ├── task_schema.py
-│   │   └── page.py
-│   │
-│   ├── routers/                # API routes
-│   │   ├── user_routes.py
-│   │   ├── project_routes.py
-│   │   ├── task_routes.py
-│   │   ├── subtask_routes.py
-│   │   └── webhook.py
-│   │
-│   ├── handlers/               # Business logic
-│   │   ├── user_handler.py
-│   │   ├── project_handler.py
-│   │   ├── task_handler.py
-│   │   └── subtask_handler.py
-│   │
-│   └── config/                 # Configuration
-│       └── config.py
-│
-└── requirements.txt
-```
-
----
-
-## 🗄️ Database Schema
-
-### Shared Tables (Public Schema)
-
-#### `roles`
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `role_name` | VARCHAR | PRIMARY KEY |
-
-#### `organizations`
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | INTEGER | PRIMARY KEY |
-| `name` | VARCHAR | NOT NULL |
-| `des` | VARCHAR | NOT NULL |
-| `owner_id` | INTEGER | FK → users.id |
-
-#### `users`
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | INTEGER | PRIMARY KEY |
-| `username` | VARCHAR | NOT NULL |
-| `email` | VARCHAR | NOT NULL, UNIQUE |
-| `password` | VARCHAR | NOT NULL |
-| `org_id` | INTEGER | FK → organization.id |
-| `role_name` | VARCHAR | FK → roles.role_name |
-| `stripe_payment_method_id` | VARCHAR | NULLABLE |
-| `pricing_plan` | VARCHAR | DEFAULT 'basic' |
-| `is_active` | BOOLEAN | DEFAULT FALSE |
-| `first_login_done` | BOOLEAN | DEFAULT FALSE |
-| `stripe_customer_id` | VARCHAR | NULLABLE |
-| `stripe_subscription_id` | VARCHAR | NULLABLE |
-
-### Tenant Tables (org_N Schema)
-
-#### `projects`
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | INTEGER | PRIMARY KEY |
-| `name` | VARCHAR | NOT NULL |
-| `des` | VARCHAR | NOT NULL |
-| `owner_id` | INTEGER | FK → users.id |
-| `org_id` | INTEGER | FK → organization.id |
-
-#### `tasks`
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | INTEGER | PRIMARY KEY |
-| `title` | VARCHAR | NOT NULL |
-| `des` | VARCHAR | NOT NULL |
-| `status` | VARCHAR | DEFAULT 'pending' |
-| `assigned_to` | INTEGER | FK → users.id |
-| `project_id` | INTEGER | FK → projects.id |
-
-#### `subtasks`
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | INTEGER | PRIMARY KEY |
-| `title` | VARCHAR | NOT NULL |
-| `description` | VARCHAR | NULLABLE |
-| `status` | VARCHAR | DEFAULT 'pending' |
-| `task_id` | INTEGER | FK → tasks.id |
-
----
-
-## 🏢 Multi-Tenancy
-
-### How It Works
-
-```
-1. Super Admin creates organization
-        ↓
-2. System creates schema: org_{org_id}
-        ↓
-3. System creates tables: projects, tasks, subtasks
-        ↓
-4. Org Admin creates projects/tasks in their schema
-        ↓
-5. Data is isolated - org_1 cannot see org_2 data
-```
-
-### Schema Creation Flow
-
-```python
-# When organization is created
-POST /users/organization
-{
-  "name": "Acme Corp",
-  "des": "Technology company"
-}
-
-# System automatically creates:
-# - org_1 schema
-# - projects table
-# - tasks table
-# - subtasks table
-```
-
----
-
-## 👥 User Roles
-
-| Role | Permissions | Payment Required |
-|------|-------------|------------------|
-| **super_admin** | - Create organizations<br>- Create org_admin<br>- Access all orgs<br>- View all payments | ❌ No |
-| **org_admin** | - Create projects<br>- Create tasks<br>- Create users (in their org)<br>- Manage org data | ✅ Yes (on first login) |
-| **user** | - View assigned tasks<br>- Update task status<br>- Create subtasks | ✅ Yes (on first login) |
-
----
-
-## 💳 Payment Integration
-
-### Flow
-
-```
-1. Super Admin creates org_admin/user
-        ↓
-2. Assigns pricing_plan: "basic" or "pro"
-        ↓
-3. Assigns stripe_payment_method_id: "pm_card_visa"
-        ↓
-4. User logs in for first time
-        ↓
-5. System creates Stripe Customer + Subscription
-        ↓
-6. User.is_active = TRUE
-        ↓
-7. Monthly billing starts automatically
-```
-
-### Webhook Events
-
-| Event | Action |
-|-------|--------|
-| `invoice.payment_succeeded` | Set `is_active = TRUE` |
-| `invoice.payment_failed` | Set `is_active = FALSE` |
-| `customer.subscription.deleted` | Set `is_active = FALSE` |
-
-### Test Cards
-
-| Card | Purpose |
-|------|---------|
-| `4242 4242 4242 4242` | Success |
-| `4000 0000 0000 9995` | Decline |
-
----
-
-## 📦 Installation
-
-### Prerequisites
-
-- Python 3.11+
-- PostgreSQL 14+
-- pip (Python package manager)
-
-### Step 1: Clone Repository
-
-```bash
-git clone <repository-url>
-cd Multi_tenant_api/project2
-```
-
-### Step 2: Create Virtual Environment
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-source .venv/bin/activate  # Linux/Mac
-```
-
-### Step 3: Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Step 4: Create Database
-
-```sql
--- In PostgreSQL
-CREATE DATABASE multi_tenant_db;
-```
-
-### Step 5: Setup Environment Variables
-
-```bash
-# Copy .env.example to .env
-copy .env.example .env  # Windows
-cp .env.example .env  # Linux/Mac
-```
-
----
-
-## 🔐 Environment Variables
-
-Create a `.env` file in `project2/` directory:
-
-```env
-# Database
-DATABASE_URL=postgresql://postgres:your_password@localhost:5432/multi_tenant_db
-
-# JWT
-SECRET_KEY=your-super-secret-jwt-key-change-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Stripe
-STRIPE_SECRET_KEY=sk_test_XXXXXXXXXXXXXXXXXXXX
-STRIPE_WEBHOOK_SECRET=whsec_XXXXXXXXXXXXXXXXXXXX
-
-# Application
-DEBUG=True
-```
-
-> ⚠️ **Never commit `.env` to version control!**
-
----
-
-## 🚀 Setup Instructions
-
-### Step 1: Run Migrations
-
-```bash
-# Create initial migration
-alembic revision -m "create shared tables"
-
-# Edit the migration file (add CREATE TABLE statements)
-
-# Apply migration
-alembic upgrade head
-```
-
-### Step 2: Create Super Admin
-
-```bash
-python super_admin.py
-```
-
-**Default Credentials:**
-```
-Username: super_admin
-Email: super@admin.com
-Password: admin123
-```
-
-> ⚠️ **Change password after first login!**
-
-### Step 3: Start Server
-
-```bash
-uvicorn main:app --reload
-```
-
-### Step 4: Access API Documentation
-
-```
-http://127.0.0.1:8000/docs
-```
-
----
-
-## 📡 API Endpoints
-
-### Authentication
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `POST` | `/users/login` | User login | ❌ No |
-| `POST` | `/users/register` | Create user | ✅ super_admin, org_admin |
-
-### Users
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `GET` | `/users/users` | List all users | ✅ super_admin, org_admin |
-| `PUT` | `/users/update_user/{u_id}` | Update user | ✅ super_admin, org_admin |
-| `DELETE` | `/users/delete_user/{u_id}` | Delete user | ✅ super_admin, org_admin |
-| `GET` | `/users/payment-status` | View payment status | ✅ super_admin, org_admin |
-
-### Organizations
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `POST` | `/users/organization` | Create organization | ✅ super_admin |
-| `GET` | `/users/show_organization` | List organizations | ✅ super_admin |
-| `DELETE` | `/users/delete_organization/{d_id}` | Delete organization | ✅ super_admin |
-| `POST` | `/users/update_organization` | Update organization | ✅ super_admin |
-
-### Projects
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `POST` | `/project/` | Create project | ✅ super_admin, org_admin |
-| `GET` | `/project/` | List projects | ✅ super_admin, org_admin |
-| `GET` | `/project/{id}` | Get single project | ✅ super_admin, org_admin |
-| `DELETE` | `/project/{id}` | Delete project | ✅ super_admin, org_admin |
-
-### Tasks
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `POST` | `/tasks/projects/{P_id}/tasks` | Create task | ✅ org_admin |
-| `GET` | `/tasks/projects/{p_id}/tasks` | List tasks | ✅ super_admin, org_admin, user |
-| `PUT` | `/tasks/tasks/{task_id}` | Update task | ✅ super_admin, org_admin, user |
-| `DELETE` | `/tasks/tasks/{task_id}` | Delete task | ✅ org_admin |
-| `POST` | `/tasks/assign/{task_id}/user/{user_id}` | Assign task | ✅ org_admin |
-
-### Webhooks
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `POST` | `/stripe/webhook` | Stripe webhook | ❌ No (signature verified) |
-
----
-
-## 🔑 Authentication Flow
-
-### 1. Login
-
-```http
-POST /users/login
-Content-Type: application/x-www-form-urlencoded
-
-username=super_admin&password=admin123
-```
-
-**Response:**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "message": "User is now logged in successfully"
-}
-```
-
-### 2. Use Token in Requests
-
-```http
-GET /users/users
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-### 3. Token Structure
-
-```json
-{
-  "id": 1,
-  "username": "super_admin",
-  "role": "super_admin",
-  "org_id": null,
-  "exp": 1234567890
-}
-```
-
----
-
-## 🧪 Testing
-
-### Using Swagger UI
-
-1. Go to `http://127.0.0.1:8000/docs`
-2. Click **Authorize** button
-3. Enter token: `Bearer <your_token>`
-4. Test endpoints
-
-### Using curl
-
-```bash
-# Login
-curl -X POST "http://127.0.0.1:8000/users/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=super_admin&password=admin123"
-
-# Get users
-curl -X GET "http://127.0.0.1:8000/users/users" \
-  -H "Authorization: Bearer <your_token>"
-```
-
-### Using Postman
-
-1. Create new request
-2. Set Authorization type to **Bearer Token**
-3. Paste your access token
-4. Send request
-
-
-## 🚀 Deployment
-
-### Production Checklist
-
-- [ ] Change `SECRET_KEY` to strong random value
-- [ ] Set `DEBUG=False`
-- [ ] Use production database
-- [ ] Use production Stripe keys
-- [ ] Enable HTTPS
-- [ ] Set up firewall rules
-- [ ] Configure backup strategy
-- [ ] Set up monitoring
-
-### Deploy to Server
-
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Set environment variables
-export DATABASE_URL=postgresql://...
-export SECRET_KEY=...
-export STRIPE_SECRET_KEY=sk_live_...
-
-# 3. Run migrations
-alembic upgrade head
-
-# 4. Start with Gunicorn
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
-```
-
-─────────────────────────────────────────┘
-```
